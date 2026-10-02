@@ -35,10 +35,6 @@ pub fn build_projection_struct(projection_node: Node, content: &str) -> Option<P
                 is_final = tracked_keywords.is_final;
             }
             _ => {
-                eprintln!(
-                    "Error: Unrecognized projection child node {:?}",
-                    projection_child.kind()
-                );
                 continue;
             }
         }

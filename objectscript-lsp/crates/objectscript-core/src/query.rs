@@ -6,7 +6,7 @@ use crate::parse_structures::Query;
 use std::collections::HashMap;
 use tree_sitter::Node;
 
-pub fn build_query_struct(query_node: Node, content: &str) -> Option<Query> {
+pub fn build_query_struct(query_node: Node, content: &str, class_name: &str) -> Option<Query> {
     if query_node.kind() != "query" {
         eprintln!(
             "Error: build_query_struct was called for node {:?}, but it can only be called for query nodes",
@@ -20,6 +20,7 @@ pub fn build_query_struct(query_node: Node, content: &str) -> Option<Query> {
     let mut query_name = None;
     let mut return_type = None;
     let mut arguments = HashMap::new();
+    let mut body = None;
     let query_children = get_node_children(query_node);
     for query_child in query_children {
         match query_child.kind() {
@@ -40,12 +41,15 @@ pub fn build_query_struct(query_node: Node, content: &str) -> Option<Query> {
                 required_privileges = tracked_keywords.requires;
                 is_public = tracked_keywords.is_public;
             }
-            "keyword_query" | "external_method_body_content" => {}
+            "keyword_query" => {}
+            "external_method_body_content" => {
+                body = get_string_at_byte_range(content, query_child.byte_range());
+            }
             "arguments" => {
                 let argument_children = get_node_children(query_child);
                 for argument in argument_children {
                     if let Some((argument_struct, argument_range)) =
-                        build_argument(argument, content)
+                        build_argument(argument, content, class_name)
                     {
                         arguments.insert(
                             argument_struct.name.clone(),
@@ -55,10 +59,6 @@ pub fn build_query_struct(query_node: Node, content: &str) -> Option<Query> {
                 }
             }
             _ => {
-                eprintln!(
-                    "Error: Unrecognized query child node {:?}",
-                    query_child.kind()
-                );
                 continue;
             }
         }
@@ -73,6 +73,7 @@ pub fn build_query_struct(query_node: Node, content: &str) -> Option<Query> {
             name,
             return_type,
             arguments,
+            body,
         });
     }
 

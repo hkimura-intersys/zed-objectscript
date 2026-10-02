@@ -62,10 +62,6 @@ pub fn build_relationship_struct(relationship_node: Node, content: &str) -> Opti
             }
             "keyword_relationship" => {}
             _ => {
-                eprintln!(
-                    "Error: Unrecognized relationship child node {:?}",
-                    relationship_child.kind()
-                );
                 continue;
             }
         }

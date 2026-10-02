@@ -21,7 +21,11 @@ impl Default for Property {
     }
 }
 
-pub fn build_property_struct(property_node: Node, content: &str) -> Option<Property> {
+pub fn build_property_struct(
+    property_node: Node,
+    content: &str,
+    class_name: &str,
+) -> Option<Property> {
     if property_node.kind() != "property" {
         eprintln!(
             "Error: build_property_struct was called for node {:?}, but it can only be called for property nodes",
@@ -48,7 +52,7 @@ pub fn build_property_struct(property_node: Node, content: &str) -> Option<Prope
                 let argument_children = get_node_children(property_child);
                 for argument in argument_children {
                     if let Some((argument_struct, argument_range)) =
-                        build_argument(argument, content)
+                        build_argument(argument, content, class_name)
                     {
                         property.arguments.insert(
                             argument_struct.name.clone(),

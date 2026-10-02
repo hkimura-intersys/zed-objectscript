@@ -43,7 +43,7 @@ pub fn build_parameter_struct(parameter_node: Node, content: &str) -> Option<Par
                     parameter.default_value = get_string_at_byte_range(content, val.byte_range());
                 }
             }
-            "return_type" => {
+            "parameter_type" => {
                 parameter.return_type = parse_return_type(parameter_child, content);
             }
             "parameter_keywords" => {

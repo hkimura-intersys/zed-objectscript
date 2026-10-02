@@ -126,17 +126,18 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
             if keyword_name == "notinheritable" {
                 is_final = Some(true);
             } else if keyword_name == "inverse" {
-                let Some(inverse_value) = keyword_value.first().map(String::as_str) else {
+                let Some(&inverse_value) = keyword_value.first() else {
                     eprintln!("Error: inverse keyword should have a value");
                     continue;
                 };
                 inverse = Some(inverse_value.to_string());
             } else if keyword_name == "cardinality" {
-                let Some(cardinality_value) = keyword_value.first().map(String::as_str) else {
+                let Some(&cardinality_value) = keyword_value.first() else {
                     eprintln!("Error: cardinality keyword should have a value");
                     continue;
                 };
-                cardinality = match cardinality_value {
+                let cardinality_normalized = cardinality_value.to_lowercase();
+                cardinality = match cardinality_normalized.as_str() {
                     "one" => Some(Cardinality::One),
                     "many" => Some(Cardinality::Many),
                     "children" => Some(Cardinality::Children),
@@ -151,22 +152,22 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                 }
             } else if keyword_name == "required" {
                 if not {
-                    is_required = true;
-                } else {
                     is_required = false;
+                } else {
+                    is_required = true;
                 }
             } else if keyword_name == "multidimensional" {
                 if not {
-                    multidimensional = true;
-                } else {
                     multidimensional = false;
+                } else {
+                    multidimensional = true;
                 }
             } else if keyword_name == "ondelete" {
-                let Some(foreignkeyaction) = keyword_value.first().map(String::as_str) else {
+                let Some(&foreignkeyaction) = keyword_value.first() else {
                     eprintln!("Error: cardinality keyword should have a value");
                     continue;
                 };
-                on_delete = match foreignkeyaction {
+                on_delete = match foreignkeyaction.to_lowercase().as_str() {
                     "setdefault" => ForeignKeyAction::SetDefault,
                     "noaction" => ForeignKeyAction::NoAction,
                     "setnull" => ForeignKeyAction::SetNull,
@@ -174,7 +175,7 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     _ => continue,
                 };
             } else if keyword_name == "onupdate" {
-                let Some(foreignkeyaction) = keyword_value.first().map(String::as_str) else {
+                let Some(&foreignkeyaction) = keyword_value.first() else {
                     eprintln!("Error: cardinality keyword should have a value");
                     continue;
                 };
@@ -190,11 +191,11 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     requires.push(val.to_string());
                 }
             } else if keyword_name == "type" {
-                let Some(index_type_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&index_type_str) = keyword_value.first() else {
                     eprintln!("Error: index type keyword should have a value");
                     continue;
                 };
-                index_type = match index_type_str {
+                index_type = match index_type_str.to_lowercase().as_str() {
                     "bitmap" => IndexType::Bitmap,
                     "bitslice" => IndexType::Bitslice,
                     "collatedkey" => IndexType::CollatedKey,
@@ -203,7 +204,7 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     _ => continue,
                 };
             } else if keyword_name == "language" {
-                let Some(language_type_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&language_type_str) = keyword_value.first() else {
                     eprintln!("Error: language type keyword should have a value");
                     continue;
                 };
@@ -217,18 +218,18 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     _ => continue,
                 };
             } else if keyword_name == "codemode" {
-                let Some(codemode_type_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&codemode_type_str) = keyword_value.first() else {
                     eprintln!("Error: language type keyword should have a value");
                     continue;
                 };
-                code_mode = match codemode_type_str {
+                code_mode = match codemode_type_str.to_lowercase().as_str() {
                     "call" => CodeMode::Call,
                     "expression" => CodeMode::Expression,
                     "objectgenerator" | "generator" => CodeMode::ObjectGenerator,
                     _ => continue,
                 };
             } else if keyword_name == "procedureblock" {
-                if let Some(value) = keyword_value.first().map(String::as_str) {
+                if let Some(&value) = keyword_value.first() {
                     if value == "1" {
                         procedure_block = Some(true);
                     } else if value == "0" {
@@ -242,42 +243,43 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     public_variables_declared.insert(variable.to_string());
                 }
             } else if keyword_name == "event" {
-                let Some(event_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&event_str) = keyword_value.first() else {
                     eprintln!("Error: index event keyword should have a value");
                     continue;
                 };
-                (trigger_insert, trigger_update, trigger_delete) = match event_str {
-                    "delete" => (false, false, true),
-                    "insert" => (true, false, false),
-                    "update" => (false, true, false),
-                    "insert/update" => (true, true, false),
-                    "insert/delete" => (true, false, true),
-                    "insert/update/delete" => (true, true, true),
-                    _ => {
-                        eprintln!(
-                            "Error: failed to parse trigger event keyword {:?}",
-                            event_str
-                        );
-                        continue;
-                    }
-                };
+                (trigger_insert, trigger_update, trigger_delete) =
+                    match event_str.to_lowercase().as_str() {
+                        "delete" => (false, false, true),
+                        "insert" => (true, false, false),
+                        "update" => (false, true, false),
+                        "insert/update" => (true, true, false),
+                        "insert/delete" => (true, false, true),
+                        "insert/update/delete" => (true, true, true),
+                        _ => {
+                            eprintln!(
+                                "Error: failed to parse trigger event keyword {:?}",
+                                event_str
+                            );
+                            continue;
+                        }
+                    };
             } else if keyword_name == "time" {
-                let Some(time_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&time_str) = keyword_value.first() else {
                     eprintln!("Error: index time keyword should have a value");
                     continue;
                 };
-                trigger_time = match time_str {
+                trigger_time = match time_str.to_lowercase().as_str() {
                     "after" => TriggerFire::AFTER,
                     _ => {
                         continue;
                     }
                 };
             } else if keyword_name == "foreach" {
-                let Some(foreach_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&foreach_str) = keyword_value.first() else {
                     eprintln!("Error: index foreach keyword should have a value");
                     continue;
                 };
-                trigger_for_each = match foreach_str {
+                trigger_for_each = match foreach_str.to_lowercase().as_str() {
                     "row/object" => TriggerForEach::RowObject,
                     "statement" => TriggerForEach::Statement,
                     _ => {
@@ -285,11 +287,11 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
                     }
                 };
             } else if keyword_name == "mimetype" {
-                let Some(mimetype_str) = keyword_value.first().map(String::as_str) else {
+                let Some(&mimetype_str) = keyword_value.first() else {
                     eprintln!("Error: mimetype keyword should have a value");
                     continue;
                 };
-                language = match mimetype_str {
+                language = match mimetype_str.to_lowercase().as_str() {
                     "text/x-python"
                     | "\"text/x-python\""
                     | "application/python"
@@ -332,7 +334,11 @@ pub fn get_tracked_keywords(keywords_node: Node, content: &str) -> TrackedKeywor
     }
 }
 
-pub fn build_argument(argument_node: Node, content: &str) -> Option<(Argument, Range)> {
+pub fn build_argument(
+    argument_node: Node,
+    content: &str,
+    class_name: &str,
+) -> Option<(Argument, Range)> {
     let mut argument = Argument::default();
     let mut argument_range = argument_node.range();
     let argument_children = get_node_children(argument_node);
@@ -370,10 +376,13 @@ pub fn build_argument(argument_node: Node, content: &str) -> Option<(Argument, R
                 }
             }
             _ => {
-                eprintln!(
-                    "Error: Unexpected child node of type {:?} in argument node",
-                    argument_child.kind(),
-                );
+                if argument_child.kind() == "ERROR" {
+                    eprintln!(
+                        "Error: Unexpected child node of type {:?} in argument node for class {:?}",
+                        argument_child.kind(),
+                        class_name
+                    );
+                }
                 continue;
             }
         }
@@ -381,25 +390,58 @@ pub fn build_argument(argument_node: Node, content: &str) -> Option<(Argument, R
     Some((argument, argument_range))
 }
 
+/// Parses a `return_type`/`parameter_type` node (`As <typename>`) into a `TypeName`.
+///
+/// `typename` children are the type identifier followed by type parameters, where
+/// each parameter is an identifier optionally followed by a literal value:
+/// `%String(MAXLEN = 50, TRUNCATE)` -> `%String`, `[("MAXLEN", Some("50")), ("TRUNCATE", None)]`.
+/// For collections (`list Of %String`), the element type is kept as a value-less parameter.
 pub fn parse_return_type(return_type: Node, content: &str) -> Option<TypeName> {
-    fn collect_identifiers(node: Node, content: &str, identifiers: &mut Vec<String>) {
-        if node.kind() == "identifier" {
-            if let Some(identifier) = get_string_at_byte_range(content, node.byte_range()) {
-                identifiers.push(identifier);
+    let typename = if return_type.kind() == "typename" {
+        return_type
+    } else {
+        get_node_children(return_type)
+            .into_iter()
+            .find(|child| child.kind() == "typename")?
+    };
+    // The grammar wraps value-less trailing parameters in ERROR nodes; flatten them.
+    let typename_children: Vec<Node> = get_node_children(typename)
+        .into_iter()
+        .flat_map(|child| {
+            if child.is_error() {
+                get_node_children(child)
+            } else {
+                vec![child]
             }
-            return;
-        }
-        for child in get_node_children(node) {
-            collect_identifiers(child, content, identifiers);
+        })
+        .collect();
+    let (type_identifier, param_nodes) = typename_children.split_first()?;
+    if type_identifier.kind() != "identifier" {
+        return None;
+    }
+    let return_type_str = get_string_at_byte_range(content, type_identifier.byte_range())?;
+
+    let mut params = Vec::new();
+    let mut last_identifier: Option<String> = None;
+    for param_node in param_nodes {
+        if param_node.kind() == "identifier" {
+            if let Some(last_param) = last_identifier.take() {
+                params.push((last_param, None));
+            }
+            last_identifier = get_string_at_byte_range(content, param_node.byte_range());
+        } else if let Some(last_param) = last_identifier.take() {
+            params.push((
+                last_param,
+                get_string_at_byte_range(content, param_node.byte_range()),
+            ));
         }
     }
-
-    let mut identifiers = Vec::new();
-    collect_identifiers(return_type, content, &mut identifiers);
-    let return_type_name = identifiers.first()?.clone();
+    if let Some(last_param) = last_identifier {
+        params.push((last_param, None));
+    }
     Some(TypeName {
-        ret_type: find_return_type(return_type_name),
-        parameters: identifiers.into_iter().skip(1).collect(),
+        ret_type: find_return_type(return_type_str),
+        parameters: params,
     })
 }
 
@@ -917,10 +959,10 @@ pub fn find_var_dependencies(
 /// bool: true if not is before the keyword
 /// String: the lowercased keyword name
 /// Vec<String>: the lowercased values of the keyword (empty if none)
-pub fn get_keyword_and_value(keyword: &str) -> (bool, String, Vec<String>) {
+pub fn get_keyword_and_value(keyword: &str) -> (bool, String, Vec<&str>) {
     let mut not = false;
     let mut keyword_name = "".to_string();
-    let mut keyword_value: Vec<String> = Vec::new();
+    let mut keyword_value: Vec<&str> = Vec::new();
     // splits string by spaces or equal sign
     static KEYWORD_PART: OnceLock<Regex> = OnceLock::new();
     let regex = KEYWORD_PART.get_or_init(|| Regex::new(r"[^\s=,()]+").unwrap());
@@ -932,7 +974,7 @@ pub fn get_keyword_and_value(keyword: &str) -> (bool, String, Vec<String>) {
         if normalized_str == "not" {
             not = true;
         } else if count > 1 && !not {
-            keyword_value.push(normalized_str);
+            keyword_value.push(value);
         } else {
             keyword_name = normalized_str;
         }

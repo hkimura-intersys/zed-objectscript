@@ -55,7 +55,11 @@ enum BuiltClassMember {
     Storage(Storage, Range),
 }
 
-fn build_class_member(capture: MemberCapture<'_>, content: &str) -> Option<BuiltClassMember> {
+fn build_class_member(
+    capture: MemberCapture<'_>,
+    content: &str,
+    class_name: &str,
+) -> Option<BuiltClassMember> {
     let node = capture.node;
     match capture.member_type {
         MemberType::ClassMethodCall | MemberType::MethodDef | MemberType::ClientMethod => {
@@ -65,7 +69,7 @@ fn build_class_member(capture: MemberCapture<'_>, content: &str) -> Option<Built
                 MemberType::ClientMethod => MethodType::ClientMethod,
                 _ => unreachable!(),
             };
-            let method = build_method_struct(node, method_type, content)?;
+            let method = build_method_struct(node, method_type, content, class_name)?;
             let name_range = node.named_child(0)?.named_child(0)?.range();
             Some(BuiltClassMember::Method {
                 method,
@@ -73,7 +77,7 @@ fn build_class_member(capture: MemberCapture<'_>, content: &str) -> Option<Built
                 name_range,
             })
         }
-        MemberType::RelativeProperty => build_property_struct(node, content)
+        MemberType::RelativeProperty => build_property_struct(node, content, class_name)
             .map(|value| BuiltClassMember::Property(value, node.range())),
         MemberType::RelativeParameter => build_parameter_struct(node, content)
             .map(|value| BuiltClassMember::Parameter(value, node.range())),
@@ -81,7 +85,7 @@ fn build_class_member(capture: MemberCapture<'_>, content: &str) -> Option<Built
             .map(|value| BuiltClassMember::Relationship(value, node.range())),
         MemberType::Foreignkey => build_foreignkey_struct(node, content)
             .map(|value| BuiltClassMember::ForeignKey(value, node.range())),
-        MemberType::Query => build_query_struct(node, content)
+        MemberType::Query => build_query_struct(node, content, class_name)
             .map(|value| BuiltClassMember::Query(value, node.range())),
         MemberType::Index => build_index_struct(node, content)
             .map(|value| BuiltClassMember::Index(value, node.range())),
@@ -531,12 +535,36 @@ impl Class {
                                             self.is_procedure_block = false;
                                         }
                                         "language" => {
-                                            if values.first().map(String::as_str) == Some("tsql") {
-                                                self.default_language = Language::TSql;
-                                            }
+                                            let Some(&language_type_str) = values.first() else {
+                                                eprintln!(
+                                                    "Error: language type keyword should have a value"
+                                                );
+                                                continue;
+                                            };
+                                            match language_type_str.to_lowercase().as_str() {
+                                                "basic" => self.default_language = Language::Basic,
+                                                "javascript" => {
+                                                    self.default_language = Language::JavaScript
+                                                }
+                                                "ispl" => self.default_language = Language::ISpl,
+                                                "tsql" => self.default_language = Language::TSql,
+                                                "python" => {
+                                                    self.default_language = Language::Python
+                                                }
+                                                "objectscript" => {
+                                                    self.default_language = Language::Objectscript
+                                                }
+                                                _ => continue,
+                                            };
                                         }
                                         "inheritance" => {
-                                            if values.first().map(String::as_str) == Some("right") {
+                                            let Some(&inheritance_str) = values.first() else {
+                                                eprintln!(
+                                                    "Error: inheritance keyword should have a value"
+                                                );
+                                                continue;
+                                            };
+                                            if inheritance_str.to_lowercase().as_str() == "right" {
                                                 self.inheritance_direction =
                                                     InheritanceDirection::Right;
                                             }
@@ -546,8 +574,10 @@ impl Class {
                                                 inheritance_changed = true;
                                             }
                                         }
-                                        "final" if !not => {
-                                            self.is_final = true;
+                                        "final" => {
+                                            if !not {
+                                                self.is_final = true;
+                                            }
                                         }
                                         _ => {}
                                     }
@@ -597,7 +627,7 @@ impl Class {
 
                 let built_members: Vec<BuiltClassMember> = member_captures
                     .into_par_iter()
-                    .filter_map(|capture| build_class_member(capture, content))
+                    .filter_map(|capture| build_class_member(capture, content, class_name))
                     .collect();
 
                 for built_member in built_members {
@@ -761,45 +791,6 @@ impl Class {
                                                 relationship_ref,
                                             ),
                                         );
-                                    }
-                                    i += 1;
-                                    continue;
-                                }
-                                MemberType::ClassKeyword => {
-                                    if let Some(keyword_str) =
-                                        get_string_at_byte_range(content, capture.node.byte_range())
-                                    {
-                                        let (not, keyword_name, values) =
-                                            get_keyword_and_value(keyword_str.as_str());
-                                        if keyword_name == "procedureblock" {
-                                            if not {
-                                                self.is_procedure_block = false;
-                                            }
-                                        } else if keyword_name == "language" {
-                                            if let Some(value) = values.first().map(String::as_str)
-                                            {
-                                                if value == "tsql" {
-                                                    self.default_language = Language::TSql;
-                                                }
-                                            }
-                                        } else if keyword_name == "inheritance" {
-                                            if let Some(value) = values.first().map(String::as_str)
-                                            {
-                                                if value == "right" {
-                                                    self.inheritance_direction =
-                                                        InheritanceDirection::Right;
-                                                }
-                                                if self.inheritance_direction
-                                                    != old_inheritance_direction
-                                                {
-                                                    inheritance_changed = true;
-                                                }
-                                            }
-                                        } else if keyword_name == "final" {
-                                            if !not {
-                                                self.is_final = true;
-                                            }
-                                        }
                                     }
                                     i += 1;
                                     continue;
@@ -1111,6 +1102,7 @@ impl Class {
                                                     method_definition_capture,
                                                     MethodType::ClassMethod,
                                                     content,
+                                                    class_name,
                                                 )
                                                 .unwrap_or_else(|| {
                                                     Method::new(
@@ -1189,6 +1181,7 @@ impl Class {
                                                     method_definition_capture,
                                                     MethodType::InstanceMethod,
                                                     content,
+                                                    class_name,
                                                 )
                                                 .unwrap_or_else(|| {
                                                     Method::new(
@@ -1223,7 +1216,7 @@ impl Class {
                                 MemberType::RelativeProperty => {
                                     let property_node = capture.node;
                                     if let Some(property) =
-                                        build_property_struct(property_node, content)
+                                        build_property_struct(property_node, content, class_name)
                                     {
                                         let new_property_id = self.get_next_property_id();
                                         let property_ref = PropertyRef {
@@ -1342,7 +1335,9 @@ impl Class {
                                 }
                                 MemberType::Query => {
                                     let query_node = capture.node;
-                                    if let Some(query) = build_query_struct(query_node, content) {
+                                    if let Some(query) =
+                                        build_query_struct(query_node, content, class_name)
+                                    {
                                         let new_query_id = self.get_next_query_id();
                                         let query_ref = QueryRef {
                                             id: QueryId(new_query_id),
@@ -1402,10 +1397,10 @@ impl Class {
                                 }
                             }
                         }
-                        eprintln!(
-                            "error: didn't match type, but node is {:?} and class is {:?}",
-                            capture.node, class_name
-                        );
+                        // eprintln!(
+                        //     "error: didn't match type, but node is {:?} and class is {:?}",
+                        //     capture.node, class_name
+                        // );
                         i += 1;
                         continue;
                     }

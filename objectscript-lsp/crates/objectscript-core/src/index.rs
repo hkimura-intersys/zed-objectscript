@@ -82,7 +82,7 @@ pub fn build_index_struct(index_node: Node, content: &str) -> Option<Index> {
                                             content,
                                             index_type_child.byte_range(),
                                         ) {
-                                            return_type_parameters.push(param);
+                                            return_type_parameters.push((param, None));
                                         }
                                     }
                                     _ => continue,

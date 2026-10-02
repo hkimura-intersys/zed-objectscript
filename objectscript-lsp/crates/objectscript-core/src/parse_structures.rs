@@ -382,6 +382,8 @@ pub struct Query {
     pub return_type: TypeName,
     /// Query argument declarations keyed by argument name.
     pub arguments: HashMap<String, (Argument, Range)>,
+    /// Exact source of the query body (e.g. the SQL text), if present.
+    pub body: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -697,7 +699,7 @@ pub enum VariableDefType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeName {
     pub ret_type: ReturnType,
-    pub parameters: Vec<String>,
+    pub parameters: Vec<(String, Option<String>)>,
 }
 
 /// Normalized return/type categories recognized.

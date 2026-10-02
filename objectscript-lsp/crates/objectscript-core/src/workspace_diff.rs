@@ -66,7 +66,6 @@ pub struct ArgumentSnapshot {
 pub type ArgumentDiff = ValueChange<ArgumentSnapshot>;
 pub type RelationshipSnapshot = Relationship;
 pub type ForeignKeySnapshot = ForeignKey;
-pub type QuerySnapshot = Query;
 pub type IndexSnapshot = Index;
 pub type TriggerSnapshot = Trigger;
 pub type XDataSnapshot = XData;
@@ -111,6 +110,19 @@ pub struct PropertySnapshot {
 pub struct ParameterSnapshot {
     pub final_keyword: Option<bool>,
     pub return_type: Option<TypeName>,
+    pub default_value: Option<String>,
+}
+
+/// Query snapshot without source ranges, so moving a query is not a change.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct QuerySnapshot {
+    pub required_privileges: Vec<String>,
+    pub is_final: Option<bool>,
+    pub is_public: bool,
+    pub return_type: TypeName,
+    pub arguments: BTreeMap<String, ArgumentSnapshot>,
+    /// Exact query body source (e.g. the SQL text).
+    pub body: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -167,6 +179,7 @@ pub struct PropertyDiff {
 pub struct ParameterDiff {
     pub final_keyword: Option<ValueChange<Option<bool>>>,
     pub return_type: Option<ValueChange<Option<TypeName>>>,
+    pub default_value: Option<ValueChange<Option<String>>>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -380,6 +393,15 @@ pub fn snapshot_class(data: &ProjectData, class_name: &str) -> Option<ClassSnaps
                 .map(|parameter| (name.clone(), snapshot_parameter(parameter)))
         })
         .collect();
+    let queries = class
+        .queries
+        .iter()
+        .filter_map(|(name, query_ref)| {
+            data.global_semantic_model
+                .get_query(query_ref)
+                .map(|query| (name.clone(), snapshot_query(query)))
+        })
+        .collect();
     macro_rules! snapshot_members {
         ($field:ident, $getter:ident) => {
             class
@@ -408,7 +430,7 @@ pub fn snapshot_class(data: &ProjectData, class_name: &str) -> Option<ClassSnaps
         parameters,
         relationships: snapshot_members!(relationships, get_relationship),
         foreign_keys: snapshot_members!(foreignkeys, get_foreignkey),
-        queries: snapshot_members!(queries, get_query),
+        queries,
         indices: snapshot_members!(indices, get_index),
         triggers: snapshot_members!(triggers, get_trigger),
         xdata: snapshot_members!(xdata, get_xdata),
@@ -506,6 +528,18 @@ fn snapshot_parameter(parameter: &Parameter) -> ParameterSnapshot {
     ParameterSnapshot {
         final_keyword: parameter.is_final,
         return_type: parameter.return_type.clone(),
+        default_value: parameter.default_value.clone(),
+    }
+}
+
+fn snapshot_query(query: &Query) -> QuerySnapshot {
+    QuerySnapshot {
+        required_privileges: query.required_privileges.clone(),
+        is_final: query.is_final,
+        is_public: query.is_public,
+        return_type: query.return_type.clone(),
+        arguments: snapshot_arguments(&query.arguments),
+        body: query.body.clone(),
     }
 }
 
@@ -634,8 +668,12 @@ fn diff_parameter(before: &ParameterSnapshot, after: &ParameterSnapshot) -> Opti
     let result = ParameterDiff {
         final_keyword: value_change(&before.final_keyword, &after.final_keyword),
         return_type: value_change(&before.return_type, &after.return_type),
+        default_value: value_change(&before.default_value, &after.default_value),
     };
-    (result.final_keyword.is_some() || result.return_type.is_some()).then_some(result)
+    (result.final_keyword.is_some()
+        || result.return_type.is_some()
+        || result.default_value.is_some())
+    .then_some(result)
 }
 
 fn diff_members<T, D>(

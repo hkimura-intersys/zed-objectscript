@@ -161,6 +161,7 @@ pub fn build_method_struct(
     method_node: Node,
     method_type: MethodType,
     content: &str,
+    class_name: &str,
 ) -> Option<Method> {
     if method_node.kind() != "method_definition" && method_node.kind() != "clientmethod" {
         eprintln!(
@@ -189,7 +190,7 @@ pub fn build_method_struct(
                 let argument_children = get_node_children(method_child);
                 for argument in argument_children {
                     if let Some((argument_struct, argument_range)) =
-                        build_argument(argument, content)
+                        build_argument(argument, content, class_name)
                     {
                         method.arguments.insert(
                             argument_struct.name.clone(),

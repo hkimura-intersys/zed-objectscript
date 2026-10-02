@@ -52,10 +52,6 @@ pub fn build_trigger_struct(trigger_node: Node, content: &str) -> Option<Trigger
                 trigger.code_mode = tracked_keywords.code_mode;
             }
             _ => {
-                // eprintln!(
-                //     "Error: Unrecognized trigger child node {:?}",
-                //     trigger_child.kind()
-                // );
                 continue;
             }
         }

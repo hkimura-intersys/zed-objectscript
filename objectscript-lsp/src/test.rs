@@ -315,20 +315,23 @@ mod tests {
     #[test]
     fn test_get_keyword_and_value() {
         let (not, keyword, values) = get_keyword_and_value("ClientDataType = longvarchar");
-        let value = values.first().map(String::as_str);
+        assert!(values.first().is_some());
+        let &value = values.first().unwrap();
         assert!(!not);
         assert_eq!(keyword, "clientdatatype");
-        assert_eq!(value, Some("longvarchar"));
+        assert_eq!(value, "longvarchar");
         let (not, keyword, values) = get_keyword_and_value("ClientDataType=longvarchar");
-        let value = values.first().map(String::as_str);
+        assert!(values.first().is_some());
+        let &value = values.first().unwrap();
         assert!(!not);
         assert_eq!(keyword, "clientdatatype");
-        assert_eq!(value, Some("longvarchar"));
+        assert_eq!(value, "longvarchar");
         let (not, keyword, values) = get_keyword_and_value("ProcedureBlock = 1");
-        let value = values.first().map(String::as_str);
+        assert!(values.first().is_some());
+        let &value = values.first().unwrap();
         assert!(!not);
         assert_eq!(keyword, "procedureblock");
-        assert_eq!(value, Some("1"));
+        assert_eq!(value, "1");
         let (not, keyword, _) = get_keyword_and_value("Not ProcedureBlock");
         assert!(not);
         assert_eq!(keyword, "procedureblock");

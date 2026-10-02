@@ -66,10 +66,6 @@ pub fn build_foreignkey_struct(foreignkey_node: Node, content: &str) -> Option<F
                 foreign_key.on_delete = tracked_keywords.on_delete;
             }
             _ => {
-                eprintln!(
-                    "Error: Unrecognized foreign key child node {:?}",
-                    foreign_key_child.kind()
-                );
                 continue;
             }
         }

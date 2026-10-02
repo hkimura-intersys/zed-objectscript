@@ -277,7 +277,6 @@ fn c14_keyword_case_is_not_significant() {
 }
 
 #[test]
-#[ignore = "gap: same as q06, query argument Ranges shift when members move"]
 fn c15_reordering_members_is_not_a_member_change() {
     let diff = diff(
         "Property A As %String;\n\nParameter P = 1;\n\nMethod Run()\n{\n    quit\n}\n\n\
@@ -479,7 +478,6 @@ fn p02_return_type() {
 }
 
 #[test]
-#[ignore = "gap: type parameter values (MAXLEN = 50) are dropped; only names are kept"]
 fn p03_type_parameter_value() {
     let property = only_changed!(
         diff(
@@ -489,7 +487,16 @@ fn p03_type_parameter_value() {
         properties,
         "Name"
     );
-    assert!(property.return_type.is_some());
+    let parameters = |type_name: Option<TypeName>| type_name.unwrap().parameters;
+    let return_type = property.return_type.unwrap();
+    assert_eq!(
+        parameters(return_type.before),
+        vec![("MAXLEN".to_string(), Some("50".to_string()))]
+    );
+    assert_eq!(
+        parameters(return_type.after),
+        vec![("MAXLEN".to_string(), Some("100".to_string()))]
+    );
 }
 
 #[test]
@@ -506,7 +513,6 @@ fn p04_type_parameter_added() {
 }
 
 #[test]
-#[ignore = "bug: get_tracked_keywords inverts Required (bare keyword sets false)"]
 fn p05_required_keyword() {
     let property = only_changed!(
         diff(
@@ -546,7 +552,6 @@ fn p07_final_keyword() {
 }
 
 #[test]
-#[ignore = "bug: get_tracked_keywords inverts MultiDimensional (bare keyword sets false)"]
 fn p08_multidimensional_keyword() {
     let property = only_changed!(
         diff(
@@ -591,17 +596,19 @@ fn pa01_parameter_added_and_removed() {
 }
 
 #[test]
-#[ignore = "gap: ParameterSnapshot does not include default_value"]
 fn pa02_default_value() {
-    let _ = only_changed!(
+    let parameter = only_changed!(
         diff("Parameter VERSION = 1;", "Parameter VERSION = 2;"),
         parameters,
         "VERSION"
     );
+    assert_eq!(
+        parameter.default_value,
+        change(Some("1".to_string()), Some("2".to_string()))
+    );
 }
 
 #[test]
-#[ignore = "bug: build_parameter_struct matches \"return_type\", grammar emits \"parameter_type\""]
 fn pa03_return_type() {
     let parameter = only_changed!(
         diff(
@@ -680,7 +687,6 @@ fn r04_return_type() {
 }
 
 #[test]
-#[ignore = "bug: get_tracked_keywords inverts Required (bare keyword sets false)"]
 fn r05_required_private_final_keywords() {
     let relationship = only_changed!(
         diff(REL, &REL.replace(" ];", ", Required, Private, Final ];")),
@@ -795,8 +801,8 @@ fn q02_arguments() {
         "ByName"
     );
     assert_ne!(
-        query.before.arguments["name"].0,
-        query.after.arguments["name"].0
+        query.before.arguments["name"],
+        query.after.arguments["name"]
     );
 }
 
@@ -811,13 +817,14 @@ fn q03_return_type() {
 }
 
 #[test]
-#[ignore = "gap: Query has no body content field"]
 fn q04_body_content() {
-    let _ = only_changed!(
+    let query = only_changed!(
         diff(QUERY, &QUERY.replace("SELECT ID", "SELECT ID, Name")),
         queries,
         "ByName"
     );
+    assert!(query.before.body.unwrap().contains("SELECT ID FROM"));
+    assert!(query.after.body.unwrap().contains("SELECT ID, Name FROM"));
 }
 
 #[test]
@@ -837,7 +844,6 @@ fn q05_keywords() {
 }
 
 #[test]
-#[ignore = "gap: Query snapshots include argument source Ranges, so moving a query reports a change"]
 fn q06_moving_query_is_not_a_change() {
     let diff = diff(QUERY, &format!("\n\n\n{QUERY}"));
     assert_no_semantic_change(&diff);
