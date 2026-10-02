@@ -127,8 +127,9 @@
   (#set! injection.language "python"))
 
 (xdata
+(xdata_keywords
   (xdata_keyword_mimetype
-    (typename) @_mt)
+    (typename) @_mt))
   (external_method_body_content) @injection.content
   (#set! injection.include-children "true")
   (#any-of? @_mt "text/xml" "\"text/xml\"" "application/xml" "\"application/xml\"")
