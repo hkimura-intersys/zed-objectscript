@@ -1,6 +1,6 @@
 [package]
 name = "objectscript-core"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2024"
 authors = ["Hannah Kimura <hannah.kimura@intersystems.com>"]
 license = "MIT"
